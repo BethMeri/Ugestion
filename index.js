@@ -117,9 +117,115 @@ app.get('/api/calificaciones', verificarToken, verificarRol(['Admin', 'Docente']
     res.json({ mensaje: 'Aquí se suben y gestionan las notas de los alumnos. 📝' });
 });
 
+// ==========================================
+// 📝 RUTAS DE TAREAS (CRUD) Y AUDITORÍA
+// ==========================================
+
+// 1. CREAR TAREA (Solo Docentes y Admin)
+app.post('/api/tareas', verificarToken, verificarRol(['Docente', 'Admin']), (req, res) => {
+    // Tu frontend mandará esto
+    const { titulo, descripcion } = req.body;
+    
+    // ¡Nuestro Guardia de Seguridad ya nos guardó el ID de quien hizo la petición!
+    const docente_id = req.usuario.id; 
+
+    // Paso A: Guardar la tarea
+    const sqlTarea = 'INSERT INTO Tareas (titulo, descripcion, docente_id) VALUES (?, ?, ?)';
+    
+    db.query(sqlTarea, [titulo, descripcion, docente_id], (err, result) => {
+        if (err) {
+            console.error('❌ Error al crear tarea:', err.message);
+            return res.status(500).json({ mensaje: 'Error al guardar la tarea en la base de datos.' });
+        }
+
+        // Paso B: ¡LA AUDITORÍA SILENCIOSA! 🕵️‍♀️
+        // result.insertId nos da el ID exacto de la tarea que se acaba de crear
+        const id_nueva_tarea = result.insertId;
+        const accion = `Creó una nueva tarea ID #${id_nueva_tarea} titulada: "${titulo}"`;
+        const sqlAuditoria = 'INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)';
+
+        db.query(sqlAuditoria, [docente_id, accion], (errAudit) => {
+            if (errAudit) {
+                console.error('❌ Error guardando el log de auditoría:', errAudit.message);
+                // Ojo: Si la auditoría falla, igual le decimos al usuario que su tarea se creó,
+                // para no interrumpir su trabajo, pero a nosotros nos queda el error en la terminal.
+            }
+        });
+
+        res.status(201).json({ mensaje: '¡Tarea publicada exitosamente y registrada en auditoría!' });
+    });
+});
+
+// 2. VER TODAS LAS TAREAS (Cualquiera con Pase VIP)
+app.get('/api/tareas', verificarToken, (req, res) => {
+    const sql = 'SELECT * FROM Tareas';
+    db.query(sql, (err, results) => {
+        if (err) {
+            return res.status(500).json({ mensaje: 'Error al obtener el listado de tareas.' });
+        }
+        res.json(results);
+    });
+});
+
+// 3. ACTUALIZAR TAREA (Solo Docentes y Admin)
+app.put('/api/tareas/:id', verificarToken, verificarRol(['Docente', 'Admin']), (req, res) => {
+    // Tomamos el ID de la tarea desde la URL (ej: /api/tareas/5)
+    const id_tarea = req.params.id; 
+    const { titulo, descripcion } = req.body;
+    const usuario_id = req.usuario.id;
+
+    const sqlUpdate = 'UPDATE Tareas SET titulo = ?, descripcion = ? WHERE id = ?';
+    
+    db.query(sqlUpdate, [titulo, descripcion, id_tarea], (err, result) => {
+        if (err) {
+            console.error('❌ Error al actualizar:', err.message);
+            return res.status(500).json({ mensaje: 'Error al actualizar la tarea.' });
+        }
+
+        // Si affectedRows es 0, significa que no existe ninguna tarea con ese ID
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ mensaje: 'No se encontró la tarea para actualizar.' });
+        }
+
+        // 🕵️‍♀️ LA AUDITORÍA SILENCIOSA
+        const accion = `Actualizó la tarea ID #${id_tarea} modificando su título a: "${titulo}"`;
+        const sqlAuditoria = 'INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)';
+        db.query(sqlAuditoria, [usuario_id, accion]);
+
+        res.json({ mensaje: '¡Tarea actualizada correctamente y registrada en auditoría!' });
+    });
+});
+
+// 4. ELIMINAR TAREA (Solo Docentes y Admin)
+app.delete('/api/tareas/:id', verificarToken, verificarRol(['Docente', 'Admin']), (req, res) => {
+    const id_tarea = req.params.id;
+    const usuario_id = req.usuario.id;
+
+    const sqlDelete = 'DELETE FROM Tareas WHERE id = ?';
+    
+    db.query(sqlDelete, [id_tarea], (err, result) => {
+        if (err) {
+            console.error('❌ Error al eliminar:', err.message);
+            return res.status(500).json({ mensaje: 'Error al eliminar la tarea.' });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ mensaje: 'No se encontró la tarea para eliminar.' });
+        }
+
+        // 🕵️‍♀️ LA AUDITORÍA SILENCIOSA
+        const accion = `Eliminó permanentemente la tarea ID #${id_tarea}`;
+        const sqlAuditoria = 'INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)';
+        db.query(sqlAuditoria, [usuario_id, accion]);
+
+        res.json({ mensaje: '¡Tarea eliminada exitosamente y registrada en auditoría!' });
+    });
+});
+
 // Encendemos el servidor
 app.listen(port, () => {
     console.log(`🚀 Servidor corriendo en el puerto http://localhost:${port}`);
 });
+
 
 
