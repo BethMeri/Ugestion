@@ -2,8 +2,8 @@ const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken'); // 👈 ¡NUEVO 1: Agregamos la librería de los tokens aquí!
-
+const jwt = require('jsonwebtoken'); 
+const { verificarToken, verificarRol } = require('./middlewares/auth'); 
 // Inicializamos la aplicación
 const app = express();
 const port = 3000;
@@ -107,7 +107,19 @@ app.post('/api/login', (req, res) => {
 });
 // 👆 FIN DE LA RUTA DE LOGIN 👆
 
+// Ruta secreta SÓLO para el Admin
+app.get('/api/panel-admin', verificarToken, verificarRol(['Admin']), (req, res) => {
+    res.json({ mensaje: '¡Bienvenida al Panel de Control Supremo' });
+});
+
+// Ruta para Docentes y Admin (El estudiante no puede entrar aquí)
+app.get('/api/calificaciones', verificarToken, verificarRol(['Admin', 'Docente']), (req, res) => {
+    res.json({ mensaje: 'Aquí se suben y gestionan las notas de los alumnos. 📝' });
+});
+
 // Encendemos el servidor
 app.listen(port, () => {
     console.log(`🚀 Servidor corriendo en el puerto http://localhost:${port}`);
 });
+
+
