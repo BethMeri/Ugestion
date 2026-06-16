@@ -95,7 +95,7 @@ app.post('/api/login', (req, res) => {
         const token = jwt.sign(
             { id: usuario.id, rol: usuario.rol }, 
             'LLAVE_SECRETA_UGESTION_123', 
-            { expiresIn: '2h' } // Caduca en 2 horas
+            { expiresIn: '4h' } // Caduca en 4 horas
         );
 
         res.status(200).json({ 
@@ -222,10 +222,35 @@ app.delete('/api/tareas/:id', verificarToken, verificarRol(['Docente', 'Admin'])
     });
 });
 
-// Encendemos el servidor
+app.get('/api/auditoria', verificarToken, verificarRol(['Admin']), (req, res) => {
+    // Hemos ajustado la consulta para que coincida con el nombre real 'fecha_hora'
+    const sql = 'SELECT accion, fecha_hora FROM auditoria_logs ORDER BY fecha_hora DESC';
+    
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error('❌ ERROR REAL DE MYSQL:', err);
+            return res.status(500).json({ mensaje: 'Error al obtener logs' });
+        }
+        res.json(results);
+    });
+});
+
+// Ruta para obtener el detalle de UNA tarea específica
+app.get('/api/tareas/:id', verificarToken, (req, res) => {
+    const id_tarea = req.params.id;
+    const sql = 'SELECT * FROM Tareas WHERE id = ?';
+    
+    db.query(sql, [id_tarea], (err, results) => {
+        if (err) return res.status(500).json({ mensaje: 'Error al obtener la tarea' });
+        if (results.length === 0) return res.status(404).json({ mensaje: 'Tarea no encontrada' });
+        
+        res.json(results[0]); // Enviamos solo la tarea encontrada
+    });
+});
+
+// Y al final, el servidor:
 app.listen(port, () => {
     console.log(`🚀 Servidor corriendo en el puerto http://localhost:${port}`);
 });
-
 
 

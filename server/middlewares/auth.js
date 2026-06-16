@@ -29,6 +29,11 @@ const verificarToken = (req, res, next) => {
 // Escudo 2: Control de Acceso Basado en Roles (El famoso RBAC)
 const verificarRol = (rolesPermitidos) => {
     return (req, res, next) => {
+        // --- AQUÍ ESTÁ EL DIAGNÓSTICO ---
+        console.log("DEBUG - Rol del usuario:", req.usuario?.rol); 
+        console.log("DEBUG - Roles permitidos:", rolesPermitidos);
+        // ---------------------------------
+
         // Revisamos si el rol del usuario está en la lista VIP de la ruta a la que intenta entrar
         if (!req.usuario || !rolesPermitidos.includes(req.usuario.rol)) {
             return res.status(403).json({ 
