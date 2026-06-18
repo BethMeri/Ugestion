@@ -139,7 +139,6 @@ app.post(
   },
 );
 
-
 // Estudiante: Ver su propia entrega
 app.get(
   "/api/tareas/:id/mi-entrega",
@@ -155,7 +154,6 @@ app.get(
   },
 );
 
-
 // Estudiante: Eliminar entrega (Anular envío)
 app.delete(
   "/api/tareas/:id/entregas",
@@ -167,20 +165,27 @@ app.delete(
 
     // Asegúrate de que el nombre de la tabla sea exactamente igual al de tu BD
     const sql = "DELETE FROM Entregas WHERE tarea_id = ? AND estudiante_id = ?";
-    
+
     db.query(sql, [id_tarea, estudiante_id], (err, result) => {
       if (err) {
         console.error("❌ ERROR AL ELIMINAR:", err);
-        return res.status(500).json({ mensaje: "Error al eliminar la entrega." });
+        return res
+          .status(500)
+          .json({ mensaje: "Error al eliminar la entrega." });
       }
-      
+
       // Log de auditoría
-      db.query("INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)", 
-        [estudiante_id, `El estudiante anuló su entrega de la tarea #${id_tarea}`]);
+      db.query(
+        "INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)",
+        [
+          estudiante_id,
+          `El estudiante anuló su entrega de la tarea #${id_tarea}`,
+        ],
+      );
 
       res.json({ mensaje: "Entrega eliminada correctamente." });
     });
-  }
+  },
 );
 
 // Docente: Ver entregas de todos (OJO: aquí mapeamos url_archivo a 'estado' para que el frontend no falle)
@@ -204,44 +209,55 @@ app.put(
   verificarToken,
   verificarRol(["Docente"]),
   (req, res) => {
-    db.query(
-      "UPDATE Entregas SET calificacion = ? WHERE id = ?",
-      [req.body.calificacion, req.params.id],
-      (err) => {
-        if (err) return res.status(500).json({ mensaje: "Error" });
-        res.json({ mensaje: "Calificado" });
-      },
-    );
+    // Agregamos el cambio de estado a 'Calificado' aquí
+    const sql =
+      "UPDATE Entregas SET calificacion = ?, estado = 'Calificado' WHERE id = ?";
+
+    db.query(sql, [req.body.calificacion, req.params.id], (err) => {
+      if (err) return res.status(500).json({ mensaje: "Error al calificar" });
+      res.json({ mensaje: "Calificado" });
+    });
   },
 );
 
 // ==========================================
 // 📝 RUTA FALTANTE PARA ELIMINAR TAREAS
 // ==========================================
-app.delete('/api/tareas/:id', verificarToken, verificarRol(['Docente', 'Admin']), (req, res) => {
+app.delete(
+  "/api/tareas/:id",
+  verificarToken,
+  verificarRol(["Docente", "Admin"]),
+  (req, res) => {
     const id_tarea = req.params.id;
-    
+
     // 1. Primero registramos en auditoría (antes de borrar)
-    db.query('INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)', 
-        [req.usuario.id, `Eliminó la tarea ID #${id_tarea}`], 
-        (err) => {
-            if (err) console.error("Error en auditoría:", err);
-            
-            // 2. Luego borramos la tarea
-            db.query('DELETE FROM Tareas WHERE id = ?', [id_tarea], (err, result) => {
-                if (err) return res.status(500).json({ mensaje: 'Error al eliminar la tarea.' });
-                
-                if (result.affectedRows === 0) {
-                    return res.status(404).json({ mensaje: 'Tarea no encontrada.' });
-                }
-                
-                res.json({ mensaje: '¡Tarea eliminada exitosamente!' });
-            });
-        }
+    db.query(
+      "INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)",
+      [req.usuario.id, `Eliminó la tarea ID #${id_tarea}`],
+      (err) => {
+        if (err) console.error("Error en auditoría:", err);
+
+        // 2. Luego borramos la tarea
+        db.query(
+          "DELETE FROM Tareas WHERE id = ?",
+          [id_tarea],
+          (err, result) => {
+            if (err)
+              return res
+                .status(500)
+                .json({ mensaje: "Error al eliminar la tarea." });
+
+            if (result.affectedRows === 0) {
+              return res.status(404).json({ mensaje: "Tarea no encontrada." });
+            }
+
+            res.json({ mensaje: "¡Tarea eliminada exitosamente!" });
+          },
+        );
+      },
     );
-});
-
-
+  },
+);
 
 // Auditoría
 app.get(

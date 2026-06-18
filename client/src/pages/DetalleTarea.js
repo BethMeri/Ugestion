@@ -188,13 +188,18 @@ const DetalleTarea = () => {
                   <h4 className="alert-heading">🎉 ¡Entrega Realizada!</h4>
                   <p className="mb-1 text-dark fw-bold">
                     Enlace:{" "}
-                    <a href={miEntrega.estado} target="_blank" rel="noreferrer">
-                      {miEntrega.estado}
+                    {/* Asegúrate de usar la columna correcta que guarda la URL, NO el estado */}
+                    <a
+                      href={miEntrega.url_archivo}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Ver documento enviado 🔗
                     </a>
                   </p>
                   <hr />
                   <p className="mb-0 fs-5">
-                    <strong>Calificación Oficial:</strong>{" "}
+                    <strong>Calificación Oficial:</strong>{miEntrega.estado}
                     {estaCalificado ? (
                       <span className="badge bg-primary ms-2 fs-6">
                         {miEntrega.calificacion} / 10
