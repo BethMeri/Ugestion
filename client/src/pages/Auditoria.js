@@ -39,13 +39,11 @@ const Auditoria = () => {
             <th>Fecha</th>
           </tr>
         </thead>
-        // Dentro de tu Auditoria.js, en la parte del map:
         <tbody>
           {logs.map((log, index) => (
             <tr key={index}>
               <td>{log.accion}</td>
-              <td>{new Date(log.fecha_hora).toLocaleString()}</td>{" "}
-              {/* Aquí usamos fecha_hora */}
+              <td>{new Date(log.fecha_hora).toLocaleString()}</td>
             </tr>
           ))}
         </tbody>

@@ -30,24 +30,26 @@ const Login = () => {
 
 
   return (
-    <div className="container mt-5">
-      <form onSubmit={handleSubmit} className="card p-4 shadow">
-        <h2>Iniciar Sesión</h2>
-        <input
-          className="form-control mb-3"
-          placeholder="Correo"
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          className="form-control mb-3"
-          type="password"
-          placeholder="Contraseña"
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <button className="btn btn-primary">Entrar</button>
-      </form>
-    </div>
-  );
+  <div className="container mt-5">
+    <form onSubmit={handleSubmit} className="card p-4 shadow">
+      <h2>Iniciar Sesión</h2>
+      <input
+        className="form-control mb-3"
+        placeholder="Correo"
+        onChange={(e) => setEmail(e.target.value)}
+        autoComplete="email" // Opcional, pero recomendado para el correo
+      />
+      <input
+        className="form-control mb-3"
+        type="password"
+        placeholder="Contraseña"
+        onChange={(e) => setPassword(e.target.value)}
+        autoComplete="current-password" // <-- ESTO ES LO QUE ELIMINA EL AVISO
+      />
+      <button className="btn btn-primary">Entrar</button>
+    </form>
+  </div>
+);
 };
 
 export default Login;
