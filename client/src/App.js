@@ -5,6 +5,7 @@ import Tareas from './pages/Tareas';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import Auditoria from './pages/Auditoria';
+import DetalleTarea from './pages/DetalleTarea';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
           <Route path="/tareas" element={<ProtectedRoute><Tareas /></ProtectedRoute>} />
           <Route path="/auditoria" element={<ProtectedRoute><Auditoria /> </ProtectedRoute>
 } />
+          <Route path="/tareas/:id" element={<ProtectedRoute><DetalleTarea /></ProtectedRoute>} />
         </Routes>
       </div>
     </Router>
