@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import api from "../api/axios";
-
+import { toast } from "react-toastify";
+import Swal from "sweetalert2";
 const Tareas = () => {
   const [tareas, setTareas] = useState([]);
   const [tituloNuevo, setTituloNuevo] = useState("");
@@ -30,9 +31,9 @@ const Tareas = () => {
   // ==========================================
   const crearTarea = async (e) => {
     e.preventDefault(); // Evita que la página se recargue al enviar el formulario
-    
+
     if (!tituloNuevo.trim() || !descNueva.trim()) {
-      alert("⚠️ Por favor, llena el título y la descripción de la tarea.");
+      toast.warning("⚠️ Por favor, llena el título y la descripción.");
       return;
     }
 
@@ -41,16 +42,15 @@ const Tareas = () => {
       await api.post(
         "/api/tareas",
         { titulo: tituloNuevo, descripcion: descNueva },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
-      
-      alert("¡Tarea creada y publicada con éxito! ✨");
+
+      toast.success("¡Tarea publicada con éxito! ✨");
       setTituloNuevo(""); // Limpiamos el formulario
       setDescNueva("");
-      obtenerTareas(); // Recargamos la lista para que aparezca la nueva tarea
+      obtenerTareas();
     } catch (error) {
-      console.error("Error al crear:", error);
-      alert("Hubo un error al crear la tarea.");
+      toast.error("Error al crear la tarea.");
     }
   };
 
@@ -58,16 +58,31 @@ const Tareas = () => {
   // FUNCIÓN: Eliminar Tarea (Solo Docente)
   // ==========================================
   const eliminarTarea = async (id) => {
-    if (window.confirm("⚠️ ¿Estás seguro de que deseas eliminar esta tarea? Esta acción será auditada.")) {
+
+    const result = await Swal.fire({
+      title: "¿Estás seguro?",
+      text: "¡Esta acción eliminará la tarea",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
+
+    // Si el usuario presionó "Sí, eliminar"
+    if (result.isConfirmed) {
       try {
         const token = localStorage.getItem("token");
         await api.delete(`/api/tareas/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setTareas(tareas.filter((tarea) => tarea.id !== id));
+
+        // Notificación de éxito bonita
+        Swal.fire("¡Eliminado!", "La tarea ha sido borrada.", "success");
       } catch (error) {
-        console.error("Error al eliminar:", error);
-        alert("Hubo un error al eliminar la tarea.");
+        toast.error("Hubo un error al eliminar.");
       }
     }
   };
@@ -76,27 +91,50 @@ const Tareas = () => {
   // FUNCIÓN: Editar Tarea (Solo Docente)
   // ==========================================
   const editarTarea = async (id, tituloActual, descActual) => {
-    const nuevoTitulo = window.prompt("✏️ Edita el título de la tarea:", tituloActual);
-    const nuevaDesc = window.prompt("📝 Edita la descripción:", descActual);
+    // Usamos Swal.fire para mostrar un formulario personalizado
+    const { value: formValues } = await Swal.fire({
+      title: "Editar Tarea",
+      html:
+        '<input id="swal-input1" class="swal2-input" placeholder="Título" value="' +
+        tituloActual +
+        '">' +
+        '<input id="swal-input2" class="swal2-input" placeholder="Descripción" value="' +
+        descActual +
+        '">',
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: "Guardar cambios",
+      cancelButtonText: "Cancelar",
+      preConfirm: () => {
+        return [
+          document.getElementById("swal-input1").value,
+          document.getElementById("swal-input2").value,
+        ];
+      },
+    });
 
-    if (nuevoTitulo && nuevaDesc) {
+    // Si el usuario guardó los cambios
+    if (formValues) {
+      const [nuevoTitulo, nuevaDesc] = formValues;
+
       try {
         const token = localStorage.getItem("token");
         await api.put(
           `/api/tareas/${id}`,
           { titulo: nuevoTitulo, descripcion: nuevaDesc },
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: { Authorization: `Bearer ${token}` } },
         );
 
         setTareas(
           tareas.map((tarea) =>
-            tarea.id === id ? { ...tarea, titulo: nuevoTitulo, descripcion: nuevaDesc } : tarea
-          )
+            tarea.id === id
+              ? { ...tarea, titulo: nuevoTitulo, descripcion: nuevaDesc }
+              : tarea,
+          ),
         );
-        alert("¡Tarea actualizada con éxito!");
+        toast.success("¡Tarea actualizada con éxito! ✨");
       } catch (error) {
-        console.error("Error al editar:", error);
-        alert("Hubo un error al editar la tarea.");
+        toast.error("Error al editar la tarea.");
       }
     }
   };
@@ -109,7 +147,9 @@ const Tareas = () => {
       {rol === "Docente" && (
         <div className="card shadow-sm border-0 mb-4 bg-light">
           <div className="card-body">
-            <h5 className="card-title text-dark mb-3">➕ Publicar Nueva Tarea</h5>
+            <h5 className="card-title text-dark mb-3">
+              ➕ Publicar Nueva Tarea
+            </h5>
             <form onSubmit={crearTarea}>
               <div className="row">
                 <div className="col-md-4 mb-2">
@@ -131,7 +171,10 @@ const Tareas = () => {
                   />
                 </div>
                 <div className="col-md-2 mb-2">
-                  <button type="submit" className="btn btn-primary w-100 shadow-sm">
+                  <button
+                    type="submit"
+                    className="btn btn-primary w-100 shadow-sm"
+                  >
                     Publicar
                   </button>
                 </div>
@@ -149,7 +192,10 @@ const Tareas = () => {
               <div className="card shadow-sm border-0 h-100">
                 <div className="card-body">
                   <h5 className="card-title text-dark">
-                    <Link to={`/tareas/${tarea.id}`} className="text-decoration-none text-primary fw-bold">
+                    <Link
+                      to={`/tareas/${tarea.id}`}
+                      className="text-decoration-none text-primary fw-bold"
+                    >
                       {tarea.titulo}
                     </Link>
                   </h5>
@@ -161,7 +207,13 @@ const Tareas = () => {
                       <>
                         <button
                           className="btn btn-sm btn-outline-warning me-2 shadow-sm"
-                          onClick={() => editarTarea(tarea.id, tarea.titulo, tarea.descripcion)}
+                          onClick={() =>
+                            editarTarea(
+                              tarea.id,
+                              tarea.titulo,
+                              tarea.descripcion,
+                            )
+                          }
                         >
                           ✏️ Editar
                         </button>

@@ -7,17 +7,32 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Auditoria from './pages/Auditoria';
 import DetalleTarea from './pages/DetalleTarea';
 import NotFound from './pages/NotFound';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   return (
     <Router>
       <div className="container">
+        {/* AQUÍ VA EL CONTENEDOR: */}
+        <ToastContainer 
+            position="top-right" 
+            autoClose={3000} 
+            hideProgressBar={false} 
+            newestOnTop={true} 
+            closeOnClick 
+            rtl={false} 
+            pauseOnFocusLoss 
+            draggable 
+            pauseOnHover 
+        />
+
         <Routes>
           {/* 1. RUTAS PÚBLICAS */}
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<Navigate to="/login" />} />
 
-          {/* 2. RUTAS PRIVADAS (Todo lo que necesita sesión) */}
+          {/* 2. RUTAS PRIVADAS */}
           <Route path="/*" element={
             <ProtectedRoute>
               <>
@@ -26,8 +41,6 @@ function App() {
                   <Route path="/tareas" element={<Tareas />} />
                   <Route path="/auditoria" element={<Auditoria />} />
                   <Route path="/tareas/:id" element={<DetalleTarea />} />
-                  
-                  {/* ¡IMPORTANTE! El 404 va AQUÍ, dentro de este bloque, al final */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </>
@@ -38,4 +51,5 @@ function App() {
     </Router>
   );
 }
+
 export default App;

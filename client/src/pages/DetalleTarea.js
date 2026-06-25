@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../api/axios";
+import { toast } from "react-toastify";
+import Swal from "sweetalert2";
 
 const DetalleTarea = () => {
   const { id } = useParams();
@@ -11,14 +13,14 @@ const DetalleTarea = () => {
   const [archivo, setArchivo] = useState(null);
   const rol = localStorage.getItem("role") || localStorage.getItem("rol");
 
-useEffect(() => {
+  useEffect(() => {
     // Si el id no es un número, mandamos al usuario al 404 de inmediato
     if (isNaN(id)) {
-     navigate('/not-found', { replace: true });
+      navigate("/not-found", { replace: true });
     }
   }, [id, navigate]);
   // ------------------------
-  
+
   const cargarDatos = useCallback(async () => {
     const token = localStorage.getItem("token");
     if (!token) return navigate("/login");
@@ -74,7 +76,7 @@ useEffect(() => {
   // Busca esta función y cámbiala por esta:
   const enviarTarea = async () => {
     if (!archivo || !archivo.startsWith("http")) {
-      alert("Por favor, pega un enlace válido de Drive (https://...)");
+      toast.warning("Por favor, pega un enlace válido de Drive (https://...)");
       return;
     }
 
@@ -83,40 +85,42 @@ useEffect(() => {
       await api.post(
         `/api/tareas/${id}/entregas`,
         { estado: archivo },
-        { headers: { Authorization: `Bearer ${token}` } },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
       );
-      alert("¡Enlace enviado correctamente!");
+      toast.success("¡Enlace enviado correctamente! ✨");
       cargarDatos();
     } catch (error) {
-      // CAMBIO AQUÍ: Vamos a ver el detalle del error
-      console.error(
-        "Detalle del error al enviar:",
-        error.response?.data || error.message,
-      );
-      alert(
+      toast.error(
         "Error al enviar: " +
-          (error.response?.data?.mensaje || "Revisa la consola F12"),
+          (error.response?.data?.mensaje || "Intenta de nuevo"),
       );
     }
   };
-
   const anularEntrega = async () => {
-    if (
-      window.confirm(
-        "⚠️ ¿Estás seguro de eliminar tu entrega? El documento se borrará del sistema y podrás subir uno nuevo.",
-      )
-    ) {
+    const result = await Swal.fire({
+      title: "¿Estás seguro?",
+      text: "El documento se borrará del sistema y podrás subir uno nuevo.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      confirmButtonText: "Sí, borrar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (result.isConfirmed) {
       try {
         const token = localStorage.getItem("token");
         await api.delete(`/api/tareas/${id}/entregas`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        alert("¡Entrega eliminada correctamente! 🗑️");
+        toast.success("¡Entrega eliminada correctamente! 🗑️");
         setArchivo(null);
         setMiEntrega(null);
         cargarDatos();
       } catch (error) {
-        alert("Ocurrió un error de integridad al intentar revocar la entrega.");
+        toast.error("Error al intentar revocar la entrega.");
       }
     }
   };
@@ -125,11 +129,16 @@ useEffect(() => {
   // FLUJO DE INTERFAZ DEL DOCENTE
   // ==========================================
   const calificarEntrega = async (idEntrega) => {
-    const nota = window.prompt(
-      "🎓 Asiente la calificación sobre 10 puntos (ejemplo: 9.5):",
-    );
+    const { value: nota } = await Swal.fire({
+      title: "Asignar calificación",
+      input: "number",
+      inputLabel: "Nota sobre 10 puntos",
+      inputAttributes: { min: 0, max: 10, step: 0.1 },
+      showCancelButton: true,
+      confirmButtonText: "Guardar",
+    });
 
-    if (nota !== null && nota.trim() !== "") {
+    if (nota) {
       try {
         const token = localStorage.getItem("token");
         await api.put(
@@ -137,10 +146,10 @@ useEffect(() => {
           { calificacion: parseFloat(nota) },
           { headers: { Authorization: `Bearer ${token}` } },
         );
-        alert("¡Calificación guardada con éxito! ✨");
+        toast.success("¡Calificación guardada con éxito! ✨");
         cargarDatos();
       } catch (error) {
-        alert("Error de red al registrar la calificación.");
+        toast.error("Error al registrar la calificación.");
       }
     }
   };
@@ -160,7 +169,7 @@ useEffect(() => {
     miEntrega.calificacion !== undefined &&
     miEntrega.calificacion !== "";
 
-    const estadoFinal = estaCalificado ? "Calificado" : "Entregado"; 
+  const estadoFinal = estaCalificado ? "Calificado" : "Entregado";
 
   return (
     <div className="container mt-4">
@@ -208,7 +217,7 @@ useEffect(() => {
             ) : (
               <>
                 <div className="alert alert-success shadow-sm" role="alert">
-                  <h4 className="alert-heading">🎉 ¡Entrega Realizada!</h4>
+                  <h4 className="alert-heading">¡Entrega Realizada Correctamente🎉!</h4>
                   <p className="mb-1 text-dark fw-bold">
                     Enlace:{" "}
                     {/* Asegúrate de usar la columna correcta que guarda la URL, NO el estado */}
@@ -217,17 +226,16 @@ useEffect(() => {
                       target="_blank"
                       rel="noreferrer"
                     >
-                      Ver documento enviado 🔗
+                      Ver enlace enviado 
                     </a>
                   </p>
                   <hr />
-                 <p className="mb-0 fs-5">
+                  <p className="mb-0 fs-5">
                     {/* Usamos el estadoFinal que calculamos arriba */}
-                    <strong>Estado actual:</strong> {estadoFinal} 
-                    
+                    <strong>Estado actual:</strong> {estadoFinal}
                     {estaCalificado ? (
                       <span className="badge bg-primary ms-2 fs-6">
-                        {miEntrega.calificacion} / 10
+                        {miEntrega.calificacion} / 10.00
                       </span>
                     ) : (
                       <span className="badge bg-secondary ms-2 fs-6">
@@ -240,13 +248,13 @@ useEffect(() => {
                 {!estaCalificado ? (
                   <div className="mt-3 p-3 bg-white border rounded shadow-sm">
                     <h5 className="text-danger mb-2">
-                      ¿Te equivocaste de enlace?
+                      ¿Te equivocaste?
                     </h5>
                     <button
                       className="btn btn-danger shadow-sm"
                       onClick={anularEntrega}
                     >
-                      🗑️ Eliminar Entrega Permanentemente
+                      🗑️ Eliminar Entrega
                     </button>
                   </div>
                 ) : (
@@ -255,7 +263,7 @@ useEffect(() => {
                     role="alert"
                   >
                     🔒 <strong>Entrega Bloqueada:</strong> Tu trabajo ya ha sido
-                    calificado y no se puede modificar (Integridad de datos).
+                    calificado y no se puede modificar.
                   </div>
                 )}
               </>

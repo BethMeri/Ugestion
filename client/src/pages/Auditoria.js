@@ -24,7 +24,6 @@ const Auditoria = () => {
         });
         setLogs(response.data);
       } catch (error) {
-        // En lugar de alert, solo registramos en consola
         console.error("Error al cargar auditoría:", error);
       }
     };
