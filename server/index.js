@@ -116,6 +116,36 @@ app.post(
 );
 
 // ==========================================
+// ✏️ RUTA PARA EDITAR TAREAS
+// ==========================================
+app.put(
+  "/api/tareas/:id",
+  verificarToken,
+  verificarRol(["Docente", "Admin"]),
+  (req, res) => {
+    const { titulo, descripcion } = req.body;
+    const { id } = req.params;
+
+    const sql = "UPDATE Tareas SET titulo = ?, descripcion = ? WHERE id = ?";
+
+    db.query(sql, [titulo, descripcion, id], (err, result) => {
+      if (err) {
+        console.error("❌ ERROR AL EDITAR:", err);
+        return res.status(500).json({ mensaje: "Error al actualizar en BD" });
+      }
+
+      // Log de auditoría
+      db.query(
+        "INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)",
+        [req.usuario.id, `Editó la tarea ID #${id}`],
+      );
+
+      res.json({ mensaje: "¡Tarea editada con éxito!" });
+    });
+  },
+);
+
+// ==========================================
 // 🎓 CONTROL DE ENTREGAS
 // ==========================================
 
@@ -126,14 +156,30 @@ app.post(
   verificarRol(["Estudiante"]),
   (req, res) => {
     const { estado } = req.body;
-    const sql =
+    const { id } = req.params; // ID de la tarea
+    const estudianteId = req.usuario.id;
+
+    // 1. PRIMERA CONSULTA: Guardar la entrega
+    const sqlEntrega =
       'INSERT INTO Entregas (tarea_id, estudiante_id, url_archivo, estado) VALUES (?, ?, ?, "Entregado")';
 
-    db.query(sql, [req.params.id, req.usuario.id, estado], (err, result) => {
+    db.query(sqlEntrega, [id, estudianteId, estado], (err, result) => {
       if (err) {
-        console.error("❌ ERROR SQL DETALLADO:", err); // ¡Esto nos dirá la verdad!
-        return res.status(500).json({ mensaje: err.message }); // Enviamos el error al front
+        console.error("❌ ERROR AL GUARDAR ENTREGA:", err);
+        return res.status(500).json({ mensaje: err.message });
       }
+
+      // 2. SEGUNDA CONSULTA: ¡AQUÍ ESTÁ EL MENSAJE DE AUDITORÍA!
+      const mensaje = `El estudiante #${estudianteId} entregó el documento de la tarea #${id}`;
+      const sqlAuditoria =
+        "INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)"; // QUITA fecha_hora y NOW()
+
+      // Y al ejecutar la consulta, pásale solo los dos valores:
+      db.query(sqlAuditoria, [estudianteId, mensaje], (errLog) => {
+        if (errLog) console.error("❌ ERROR AL GUARDAR LOG:", errLog);
+      });
+
+      // 3. RESPUESTA DE ÉXITO
       res.status(201).json({ mensaje: "Éxito" });
     });
   },
@@ -145,10 +191,15 @@ app.get(
   verificarToken,
   verificarRol(["Estudiante"]),
   (req, res) => {
+    // Asegúrate de que esta consulta sea SELECT *
     const sql =
       "SELECT * FROM Entregas WHERE tarea_id = ? AND estudiante_id = ?";
+
     db.query(sql, [req.params.id, req.usuario.id], (err, results) => {
-      if (err) return res.status(500).json({ mensaje: "Error" });
+      if (err)
+        return res.status(500).json({ mensaje: "Error al obtener entrega" });
+
+      // Si hay resultados, devuelve el objeto completo tal cual está en la BD
       res.json(results.length > 0 ? results[0] : null);
     });
   },
@@ -203,23 +254,43 @@ app.get(
   },
 );
 
-// Docente: Calificar
 app.put(
   "/api/entregas/:id/calificar",
   verificarToken,
   verificarRol(["Docente"]),
   (req, res) => {
-    // Agregamos el cambio de estado a 'Calificado' aquí
+    const { calificacion } = req.body;
+    const entregaId = req.params.id;
+
+    // --- AQUÍ ESTÁ LA NUEVA VALIDACIÓN ---
+    // Si la calificación es menor a 0 o mayor a 10, no hacemos nada
+    if (calificacion < 0 || calificacion > 10) {
+      return res.status(400).json({ mensaje: "La calificación debe estar entre 0 y 10" });
+    }
+
+    // 1. Actualizamos la calificación
     const sql =
       "UPDATE Entregas SET calificacion = ?, estado = 'Calificado' WHERE id = ?";
 
-    db.query(sql, [req.body.calificacion, req.params.id], (err) => {
+    db.query(sql, [calificacion, entregaId], (err, result) => {
       if (err) return res.status(500).json({ mensaje: "Error al calificar" });
+
+      // 2. REGISTRAMOS EN LA AUDITORÍA
+      const mensaje = `Asentó la calificación de (${calificacion}/10) en la entrega ID #${entregaId}`;
+
+      db.query(
+        "INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)",
+        [req.usuario.id, mensaje],
+        (errLog) => {
+          if (errLog)
+            console.error("Error al guardar log de calificación:", errLog);
+        },
+      );
+
       res.json({ mensaje: "Calificado" });
     });
   },
 );
-
 // ==========================================
 // 📝 RUTA FALTANTE PARA ELIMINAR TAREAS
 // ==========================================

@@ -11,6 +11,14 @@ const DetalleTarea = () => {
   const [archivo, setArchivo] = useState(null);
   const rol = localStorage.getItem("role") || localStorage.getItem("rol");
 
+useEffect(() => {
+    // Si el id no es un número, mandamos al usuario al 404 de inmediato
+    if (isNaN(id)) {
+     navigate('/not-found', { replace: true });
+    }
+  }, [id, navigate]);
+  // ------------------------
+  
   const cargarDatos = useCallback(async () => {
     const token = localStorage.getItem("token");
     if (!token) return navigate("/login");
@@ -20,6 +28,12 @@ const DetalleTarea = () => {
       const resTarea = await api.get(`/api/tareas/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      // Si la API devuelve un resultado vacío (por si acaso)
+      if (!resTarea.data) {
+        return navigate("/not-found", { replace: true });
+      }
+
       setTarea(resTarea.data);
 
       // 2. Cargar dependencias según el rol
@@ -33,13 +47,20 @@ const DetalleTarea = () => {
           console.log("Sin entrega previa");
         }
       } else if (rol === "Docente") {
-        const resEntregas = await api.get(`/api/tareas/${id}/entregas`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setEntregas(resEntregas.data);
+        try {
+          const resEntregas = await api.get(`/api/tareas/${id}/entregas`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setEntregas(resEntregas.data);
+        } catch (e) {
+          console.error("Error cargando entregas");
+        }
       }
     } catch (error) {
+      // --- AQUÍ ESTÁ EL CAMBIO CLAVE ---
       console.error("Error al cargar:", error);
+      // Si la API falla (ejemplo: error 404 porque el ID no existe), mandamos al 404
+      navigate("/not-found", { replace: true });
     }
   }, [id, rol, navigate]);
 
@@ -139,6 +160,8 @@ const DetalleTarea = () => {
     miEntrega.calificacion !== undefined &&
     miEntrega.calificacion !== "";
 
+    const estadoFinal = estaCalificado ? "Calificado" : "Entregado"; 
+
   return (
     <div className="container mt-4">
       <button
@@ -198,8 +221,10 @@ const DetalleTarea = () => {
                     </a>
                   </p>
                   <hr />
-                  <p className="mb-0 fs-5">
-                    <strong>Calificación Oficial:</strong>{miEntrega.estado}
+                 <p className="mb-0 fs-5">
+                    {/* Usamos el estadoFinal que calculamos arriba */}
+                    <strong>Estado actual:</strong> {estadoFinal} 
+                    
                     {estaCalificado ? (
                       <span className="badge bg-primary ms-2 fs-6">
                         {miEntrega.calificacion} / 10

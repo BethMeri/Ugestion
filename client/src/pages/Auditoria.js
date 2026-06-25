@@ -1,14 +1,22 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom"; // 1. Importa esto
 import api from "../api/axios";
 
 const Auditoria = () => {
   const [logs, setLogs] = useState([]);
+  const navigate = useNavigate(); // 2. Inicializa el hook
+  const rol = localStorage.getItem("rol") || localStorage.getItem("role");
 
   useEffect(() => {
+    // 3. Verificación de seguridad inmediata
+    if (rol !== "Admin") {
+      navigate("/tareas", { replace: true });
+      return;
+    }
+
     const obtenerLogs = async () => {
       try {
         const token = localStorage.getItem("token");
-        // ¡IMPORTANTE! El token debe enviarse con el prefijo "Bearer "
         const response = await api.get("/api/auditoria", {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -16,19 +24,16 @@ const Auditoria = () => {
         });
         setLogs(response.data);
       } catch (error) {
-        if (error.response && error.response.status === 403) {
-          alert("No tienes permisos de administrador.");
-        } else {
-          alert(
-            "Error al conectar con la base de datos: " +
-              error.response?.data?.mensaje,
-          );
-        }
+        // En lugar de alert, solo registramos en consola
+        console.error("Error al cargar auditoría:", error);
       }
     };
-    obtenerLogs();
-  }, []);
 
+    obtenerLogs();
+  }, [rol, navigate]); // 4. Añadimos dependencias
+
+  // Si no es admin, no renderizamos nada (o podrías poner un spinner)
+  if (rol !== "Admin") return null;
   return (
     <div className="container mt-5">
       <h2>🕵️‍♀️ Registro de Auditoría</h2>
@@ -40,12 +45,15 @@ const Auditoria = () => {
           </tr>
         </thead>
         <tbody>
-          {logs.map((log, index) => (
-            <tr key={index}>
-              <td>{log.accion}</td>
-              <td>{new Date(log.fecha_hora).toLocaleString()}</td>
-            </tr>
-          ))}
+         {logs.map((log, index) => (
+  <tr key={index}>
+    {/* Agregamos una lógica sencilla para resaltar las entregas */}
+    <td className={log.accion.includes('Entrega') ? 'text-primary fw-bold' : ''}>
+      {log.accion}
+    </td>
+    <td>{new Date(log.fecha_hora).toLocaleString()}</td>
+  </tr>
+))}
         </tbody>
       </table>
     </div>
