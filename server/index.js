@@ -105,16 +105,28 @@ app.post(
       [titulo, descripcion, req.usuario.id],
       (err, result) => {
         if (err) return res.status(500).json({ mensaje: "Error al guardar." });
+
+        // Buscamos el nombre del usuario para el log
         db.query(
-          "INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)",
-          [req.usuario.id, `Creó tarea: "${titulo}"`],
+          "SELECT nombre FROM usuarios WHERE id = ?",
+          [req.usuario.id],
+          (errU, resU) => {
+            const nombre =
+              !errU && resU.length > 0 ? resU[0].nombre : "Un usuario";
+            const mensaje = `${nombre} creó la actividad "${titulo}"`;
+
+            db.query(
+              "INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)",
+              [req.usuario.id, mensaje],
+            );
+          },
         );
+
         res.status(201).json({ mensaje: "¡Tarea publicada!" });
       },
     );
   },
 );
-
 // ==========================================
 // ✏️ RUTA PARA EDITAR TAREAS
 // ==========================================
@@ -129,15 +141,23 @@ app.put(
     const sql = "UPDATE Tareas SET titulo = ?, descripcion = ? WHERE id = ?";
 
     db.query(sql, [titulo, descripcion, id], (err, result) => {
-      if (err) {
-        console.error("❌ ERROR AL EDITAR:", err);
+      if (err)
         return res.status(500).json({ mensaje: "Error al actualizar en BD" });
-      }
 
-      // Log de auditoría
+      // Buscamos el nombre del usuario para el log
       db.query(
-        "INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)",
-        [req.usuario.id, `Editó la tarea ID #${id}`],
+        "SELECT nombre FROM usuarios WHERE id = ?",
+        [req.usuario.id],
+        (errU, resU) => {
+          const nombre =
+            !errU && resU.length > 0 ? resU[0].nombre : "Un usuario";
+          const mensaje = `${nombre} editó la actividad "${titulo}"`;
+
+          db.query(
+            "INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)",
+            [req.usuario.id, mensaje],
+          );
+        },
       );
 
       res.json({ mensaje: "¡Tarea editada con éxito!" });
@@ -159,7 +179,7 @@ app.post(
     const { id } = req.params; // ID de la tarea
     const estudianteId = req.usuario.id;
 
-    // 1. PRIMERA CONSULTA: Guardar la entrega
+    // 1. Guardar la entrega
     const sqlEntrega =
       'INSERT INTO Entregas (tarea_id, estudiante_id, url_archivo, estado) VALUES (?, ?, ?, "Entregado")';
 
@@ -169,17 +189,37 @@ app.post(
         return res.status(500).json({ mensaje: err.message });
       }
 
-      // 2. SEGUNDA CONSULTA: ¡AQUÍ ESTÁ EL MENSAJE DE AUDITORÍA!
-      const mensaje = `El estudiante #${estudianteId} entregó el documento de la tarea #${id}`;
-      const sqlAuditoria =
-        "INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)"; // QUITA fecha_hora y NOW()
+      // 2. BUSCAR NOMBRE DEL ESTUDIANTE Y TÍTULO DE LA TAREA
+      db.query(
+        "SELECT nombre FROM usuarios WHERE id = ?",
+        [estudianteId],
+        (errU, resU) => {
+          db.query(
+            "SELECT titulo FROM Tareas WHERE id = ?",
+            [id],
+            (errT, resT) => {
+              const nombre =
+                !errU && resU.length > 0
+                  ? resU[0].nombre
+                  : `Estudiante #${estudianteId}`;
+              const titulo =
+                !errT && resT.length > 0 ? resT[0].titulo : `Tarea #${id}`;
 
-      // Y al ejecutar la consulta, pásale solo los dos valores:
-      db.query(sqlAuditoria, [estudianteId, mensaje], (errLog) => {
-        if (errLog) console.error("❌ ERROR AL GUARDAR LOG:", errLog);
-      });
+              // Mensaje con el título real de la tarea
+              const mensaje = `${nombre} entregó el documento de la actividad "${titulo}"`;
 
-      // 3. RESPUESTA DE ÉXITO
+              db.query(
+                "INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)",
+                [estudianteId, mensaje],
+                (errLog) => {
+                  if (errLog) console.error("❌ ERROR AL GUARDAR LOG:", errLog);
+                },
+              );
+            },
+          );
+        },
+      );
+
       res.status(201).json({ mensaje: "Éxito" });
     });
   },
@@ -214,24 +254,41 @@ app.delete(
     const id_tarea = req.params.id;
     const estudiante_id = req.usuario.id;
 
-    // Asegúrate de que el nombre de la tabla sea exactamente igual al de tu BD
+    // 1. Primero eliminamos la entrega
     const sql = "DELETE FROM Entregas WHERE tarea_id = ? AND estudiante_id = ?";
-
     db.query(sql, [id_tarea, estudiante_id], (err, result) => {
-      if (err) {
-        console.error("❌ ERROR AL ELIMINAR:", err);
-        return res
-          .status(500)
-          .json({ mensaje: "Error al eliminar la entrega." });
-      }
+      if (err) return res.status(500).json({ mensaje: "Error al eliminar." });
 
-      // Log de auditoría
+      // 2. Buscamos el nombre del estudiante Y el título de la tarea
+      // Usamos una consulta un poco más inteligente
       db.query(
-        "INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)",
-        [
-          estudiante_id,
-          `El estudiante anuló su entrega de la tarea #${id_tarea}`,
-        ],
+        "SELECT nombre FROM usuarios WHERE id = ?",
+        [estudiante_id],
+        (errU, resU) => {
+          db.query(
+            "SELECT titulo FROM Tareas WHERE id = ?",
+            [id_tarea],
+            (errT, resT) => {
+              const nombre =
+                !errU && resU.length > 0
+                  ? resU[0].nombre
+                  : `Estudiante #${estudiante_id}`;
+              const titulo =
+                !errT && resT.length > 0
+                  ? resT[0].titulo
+                  : `Tarea #${id_tarea}`;
+
+              // 3. Creamos el mensaje con el nombre y el título
+              const mensaje = `${nombre} anuló su entrega de la actividad "${titulo}"`;
+
+              // 4. Guardamos en auditoría
+              db.query(
+                "INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)",
+                [estudiante_id, mensaje],
+              );
+            },
+          );
+        },
       );
 
       res.json({ mensaje: "Entrega eliminada correctamente." });
@@ -262,10 +319,10 @@ app.put(
     const { calificacion } = req.body;
     const entregaId = req.params.id;
 
-    // --- AQUÍ ESTÁ LA NUEVA VALIDACIÓN ---
-    // Si la calificación es menor a 0 o mayor a 10, no hacemos nada
     if (calificacion < 0 || calificacion > 10) {
-      return res.status(400).json({ mensaje: "La calificación debe estar entre 0 y 10" });
+      return res
+        .status(400)
+        .json({ mensaje: "La calificación debe estar entre 0 y 10" });
     }
 
     // 1. Actualizamos la calificación
@@ -275,15 +332,38 @@ app.put(
     db.query(sql, [calificacion, entregaId], (err, result) => {
       if (err) return res.status(500).json({ mensaje: "Error al calificar" });
 
-      // 2. REGISTRAMOS EN LA AUDITORÍA
-      const mensaje = `Asentó la calificación de (${calificacion}/10) en la entrega ID #${entregaId}`;
+      // 2. BUSCAR DATOS PARA AUDITORÍA
+      // Necesitamos: Nombre docente, Título tarea, y Nombre estudiante
 
+      // Consultamos el nombre del docente (que está en req.usuario.id)
       db.query(
-        "INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)",
-        [req.usuario.id, mensaje],
-        (errLog) => {
-          if (errLog)
-            console.error("Error al guardar log de calificación:", errLog);
+        "SELECT nombre FROM usuarios WHERE id = ?",
+        [req.usuario.id],
+        (errDoc, resDoc) => {
+          // Consultamos la info de la entrega: título tarea y nombre estudiante
+          const sqlInfo = `
+            SELECT t.titulo, u.nombre AS nombre_estudiante 
+            FROM Entregas e 
+            JOIN Tareas t ON e.tarea_id = t.id 
+            JOIN usuarios u ON e.estudiante_id = u.id 
+            WHERE e.id = ?`;
+
+          db.query(sqlInfo, [entregaId], (errInfo, resInfo) => {
+            const nombreDocente =
+              !errDoc && resDoc.length > 0 ? resDoc[0].nombre : "Un docente";
+            const info =
+              !errInfo && resInfo.length > 0
+                ? resInfo[0]
+                : { titulo: "una tarea", nombre_estudiante: "un estudiante" };
+
+            // 3. MENSAJE LEGIBLE Y DETALLADO
+            const mensaje = `${nombreDocente} calificó a ${info.nombre_estudiante} con (${calificacion}/10) la actividad "${info.titulo}"`;
+
+            db.query(
+              "INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)",
+              [req.usuario.id, mensaje],
+            );
+          });
         },
       );
 
@@ -300,29 +380,46 @@ app.delete(
   verificarRol(["Docente", "Admin"]),
   (req, res) => {
     const id_tarea = req.params.id;
+    const usuario_id = req.usuario.id;
 
-    // 1. Primero registramos en auditoría (antes de borrar)
+    // 1. Buscamos el título de la tarea Y el nombre del usuario antes de borrar
     db.query(
-      "INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)",
-      [req.usuario.id, `Eliminó la tarea ID #${id_tarea}`],
-      (err) => {
-        if (err) console.error("Error en auditoría:", err);
-
-        // 2. Luego borramos la tarea
+      "SELECT titulo FROM Tareas WHERE id = ?",
+      [id_tarea],
+      (errT, resT) => {
         db.query(
-          "DELETE FROM Tareas WHERE id = ?",
-          [id_tarea],
-          (err, result) => {
-            if (err)
-              return res
-                .status(500)
-                .json({ mensaje: "Error al eliminar la tarea." });
+          "SELECT nombre FROM usuarios WHERE id = ?",
+          [usuario_id],
+          (errU, resU) => {
+            const titulo =
+              !errT && resT.length > 0 ? resT[0].titulo : `ID: ${id_tarea}`;
+            const nombre =
+              !errU && resU.length > 0 ? resU[0].nombre : "Un usuario";
+            const mensaje = `${nombre} eliminó la actividad "${titulo}"`;
 
-            if (result.affectedRows === 0) {
-              return res.status(404).json({ mensaje: "Tarea no encontrada." });
-            }
+            // 2. Ahora sí borramos la tarea
+            db.query(
+              "DELETE FROM Tareas WHERE id = ?",
+              [id_tarea],
+              (err, result) => {
+                if (err)
+                  return res
+                    .status(500)
+                    .json({ mensaje: "Error al eliminar la tarea." });
+                if (result.affectedRows === 0)
+                  return res
+                    .status(404)
+                    .json({ mensaje: "Tarea no encontrada." });
 
-            res.json({ mensaje: "¡Tarea eliminada exitosamente!" });
+                // 3. Registramos en auditoría con el título ya guardado
+                db.query(
+                  "INSERT INTO auditoria_logs (usuario_id, accion) VALUES (?, ?)",
+                  [usuario_id, mensaje],
+                );
+
+                res.json({ mensaje: "¡Tarea eliminada exitosamente!" });
+              },
+            );
           },
         );
       },

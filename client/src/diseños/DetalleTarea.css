@@ -1,0 +1,17 @@
+/* Unificar el estilo de las tarjetas en todo el sistema */
+.card-tarea {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+.list-group-item {
+    border-left: none !important;
+    border-right: none !important;
+}
+
+.italic {
+    font-style: italic;
+}

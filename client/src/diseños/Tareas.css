@@ -1,0 +1,41 @@
+/* Tareas.css */
+
+.panel-container {
+    padding: 2rem;
+    /* Cambiamos 1200px por un porcentaje ancho */
+    max-width: 95%; 
+    margin: 0 auto;
+}
+
+.titulo-panel {
+    color: #004a99;
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+/* Diseño de cuadrícula (Grid) para que quepan mejor */
+.grid-tareas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 20px;
+}
+
+.card-tarea {
+    border: none !important;
+    border-radius: 15px !important;
+    padding: 20px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    background: #ffffff;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05) !important;
+}
+
+.card-tarea:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 10px 25px rgba(0, 74, 153, 0.15) !important;
+}
+
+.card-tarea h5 {
+    color: #004a99;
+    font-weight: 700;
+}

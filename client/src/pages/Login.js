@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import '../diseños/Login.css';
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -31,23 +32,31 @@ const Login = () => {
   };
 
   return (
-    <div className="container mt-5">
-      <form onSubmit={handleSubmit} className="card p-4 shadow">
-        <h2>Iniciar Sesión</h2>
+    <div className="login-container">
+      <form onSubmit={handleSubmit} className="login-card p-4 shadow">
+        {/* Título arriba del login */}
+        <h1 className="login-title mb-4">UGestion</h1>
+        
+        {/* Usuario */}
+        <label className="form-label">Usuario</label>
         <input
           className="form-control mb-3"
-          placeholder="Correo"
+          placeholder="Ingresa tu usuario"
           onChange={(e) => setEmail(e.target.value)}
-          autoComplete="email" // Opcional, pero recomendado para el correo
+          autoComplete="email"
         />
+        
+        {/* Contraseña */}
+        <label className="form-label">Contraseña</label>
         <input
-          className="form-control mb-3"
+          className="form-control mb-4"
           type="password"
-          placeholder="Contraseña"
+          placeholder="••••••••"
           onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password" // <-- ESTO ES LO QUE ELIMINA EL AVISO
+          autoComplete="current-password"
         />
-        <button className="btn btn-primary">Entrar</button>
+        
+        <button className="btn btn-primary w-100">Acceder</button>
       </form>
     </div>
   );

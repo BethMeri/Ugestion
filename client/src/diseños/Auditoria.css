@@ -1,0 +1,39 @@
+/* Auditoria.css */
+
+/* 1. Centrar el título */
+h2 {
+    text-align: center;
+    color: #004a99 !important;
+    font-weight: 700;
+    margin-bottom: 2rem;
+}
+
+/* 2. Forzamos el color del encabezado */
+.table-light {
+    background-color: #004a99 !important;
+    color: white !important;
+}
+
+/* 3. Aseguramos que el rayado (striped) se vea bien */
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: #eef6ff !important;
+}
+
+/* 4. Padding para que no se vea apretado */
+.table td, .table th {
+    padding: 1.2rem !important;
+}
+
+/* 5. Asegurar que las sombras y bordes se vean */
+.card {
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+    border-radius: 15px !important;
+}
+
+.panel-container {
+    padding: 2rem;
+    /* Cambiamos 1200px por un porcentaje ancho */
+    max-width: 95%; 
+    margin: 0 auto;
+}

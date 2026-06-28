@@ -3,6 +3,9 @@ import { Link } from "react-router-dom";
 import api from "../api/axios";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
+import '../diseños/Tareas.css';
+
+
 const Tareas = () => {
   const [tareas, setTareas] = useState([]);
   const [tituloNuevo, setTituloNuevo] = useState("");
@@ -140,106 +143,79 @@ const Tareas = () => {
   };
 
   return (
-    <div className="container mt-4">
-      <h2 className="mb-4 text-primary">Panel de Tareas 📝</h2>
+  <div className="panel-container">
+    <h2 className="titulo-panel">Panel de Tareas</h2>
 
-      {/* VISTA EXCLUSIVA DOCENTE: Formulario para crear tareas */}
-      {rol === "Docente" && (
-        <div className="card shadow-sm border-0 mb-4 bg-light">
-          <div className="card-body">
-            <h5 className="card-title text-dark mb-3">
-              ➕ Publicar Nueva Tarea
-            </h5>
-            <form onSubmit={crearTarea}>
-              <div className="row">
-                <div className="col-md-4 mb-2">
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Título de la tarea"
-                    value={tituloNuevo}
-                    onChange={(e) => setTituloNuevo(e.target.value)}
-                  />
-                </div>
-                <div className="col-md-6 mb-2">
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Descripción o instrucciones detalladas"
-                    value={descNueva}
-                    onChange={(e) => setDescNueva(e.target.value)}
-                  />
-                </div>
-                <div className="col-md-2 mb-2">
-                  <button
-                    type="submit"
-                    className="btn btn-primary w-100 shadow-sm"
-                  >
-                    Publicar
-                  </button>
-                </div>
+    {/* VISTA DOCENTE */}
+    {rol === "Docente" && (
+      <div className="card shadow-sm border-0 mb-4 p-3">
+        <div className="card-body">
+          <h5 className="mb-3">Publicar Nueva Tarea</h5>
+          <form onSubmit={crearTarea}>
+            <div className="row">
+              <div className="col-md-4 mb-2">
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Título de la tarea"
+                  value={tituloNuevo}
+                  onChange={(e) => setTituloNuevo(e.target.value)}
+                />
               </div>
-            </form>
+              <div className="col-md-6 mb-2">
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Descripción"
+                  value={descNueva}
+                  onChange={(e) => setDescNueva(e.target.value)}
+                />
+              </div>
+              <div className="col-md-2 mb-2">
+                <button type="submit" className="btn btn-primary w-100">Publicar</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+
+    {/* LISTA DE TAREAS CON GRID MODERNO */}
+    <div className="grid-tareas">
+      {tareas.length > 0 ? (
+        tareas.map((tarea) => (
+          <div className="card-tarea" key={tarea.id}>
+            <h5>
+              <Link to={`/tareas/${tarea.id}`} className="text-decoration-none">
+                {tarea.titulo}
+              </Link>
+            </h5>
+            <p className="text-muted">{tarea.descripcion}</p>
+            
+            <div className="mt-3">
+              {rol === "Docente" && (
+                <>
+                  <button 
+                    className="btn btn-sm btn-outline-warning me-2"
+                    onClick={() => editarTarea(tarea.id, tarea.titulo, tarea.descripcion)}
+                  >✏️ Editar</button>
+                  <button 
+                    className="btn btn-sm btn-outline-danger"
+                    onClick={() => eliminarTarea(tarea.id)}
+                  >🗑️ Eliminar</button>
+                </>
+              )}
+            </div>
           </div>
+        ))
+      ) : (
+        <div className="alert alert-info w-100 text-center">
+          Aún no hay tareas publicadas.
         </div>
       )}
-
-      {/* LISTA GENERAL DE TAREAS (Visible para todos) */}
-      <div className="row">
-        {tareas.length > 0 ? (
-          tareas.map((tarea) => (
-            <div className="col-md-6 mb-3" key={tarea.id}>
-              <div className="card shadow-sm border-0 h-100">
-                <div className="card-body">
-                  <h5 className="card-title text-dark">
-                    <Link
-                      to={`/tareas/${tarea.id}`}
-                      className="text-decoration-none text-primary fw-bold"
-                    >
-                      {tarea.titulo}
-                    </Link>
-                  </h5>
-                  <p className="card-text text-muted">{tarea.descripcion}</p>
-
-                  <div className="mt-3">
-                    {/* Botones exclusivos del Docente */}
-                    {rol === "Docente" && (
-                      <>
-                        <button
-                          className="btn btn-sm btn-outline-warning me-2 shadow-sm"
-                          onClick={() =>
-                            editarTarea(
-                              tarea.id,
-                              tarea.titulo,
-                              tarea.descripcion,
-                            )
-                          }
-                        >
-                          ✏️ Editar
-                        </button>
-                        <button
-                          className="btn btn-sm btn-outline-danger shadow-sm"
-                          onClick={() => eliminarTarea(tarea.id)}
-                        >
-                          🗑️ Eliminar
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="col-12">
-            <div className="alert alert-info text-center">
-              Aún no hay tareas publicadas en el sistema.
-            </div>
-          </div>
-        )}
-      </div>
     </div>
-  );
+  </div>
+);
 };
 
 export default Tareas;
