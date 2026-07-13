@@ -13,10 +13,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: "ugestion_seguridad",
+  host: "mysql-ugestion.alwaysdata.net",
+  user: "ugestion",
+  password: "JDBMGestion",
+  database: "ugestion_bd",
+  port: 3306
 });
 
 db.connect((err) => {
