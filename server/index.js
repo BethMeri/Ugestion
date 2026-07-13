@@ -8,7 +8,13 @@ const { verificarToken, verificarRol } = require("./middlewares/auth");
 const app = express();
 const port = 3000;
 
-app.use(cors());
+const corsOptions = {
+  origin: ['http://localhost:3000', 'https://ugestion.vercel.app'], 
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
