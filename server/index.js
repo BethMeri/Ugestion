@@ -36,7 +36,7 @@ app.post("/api/registro", async (req, res) => {
   try {
     const passwordHash = await bcrypt.hash(password, 10);
     db.query(
-      "INSERT INTO Usuarios (nombre, correo, password_hash, rol) VALUES (?, ?, ?, ?)",
+      "INSERT INTO usuarios (nombre, correo, password_hash, rol) VALUES (?, ?, ?, ?)",
       [nombre, correo, passwordHash, rol],
       (err) => {
         if (err)
@@ -53,7 +53,7 @@ app.post("/api/login", (req, res) => {
   const { correo, password } = req.body;
   
   db.query(
-    "SELECT * FROM Usuarios WHERE correo = ?",
+    "SELECT * FROM usuarios WHERE correo = ?",
     [correo],
     async (err, results) => {
       // 1. Atrapamos cualquier error interno de la base de datos (¡Este es el que necesitamos ver!)
@@ -90,7 +90,7 @@ app.post("/api/login", (req, res) => {
 // 📝 GESTIÓN DE TAREAS
 // ==========================================
 app.get("/api/tareas", verificarToken, (req, res) => {
-  db.query("SELECT * FROM Tareas", (err, results) => {
+  db.query("SELECT * FROM tareas", (err, results) => {
     if (err)
       return res.status(500).json({ mensaje: "Error al obtener tareas." });
     res.json(results);
@@ -99,7 +99,7 @@ app.get("/api/tareas", verificarToken, (req, res) => {
 
 app.get("/api/tareas/:id", verificarToken, (req, res) => {
   db.query(
-    "SELECT * FROM Tareas WHERE id = ?",
+    "SELECT * FROM tareas WHERE id = ?",
     [req.params.id],
     (err, results) => {
       if (err || results.length === 0)
@@ -116,7 +116,7 @@ app.post(
   (req, res) => {
     const { titulo, descripcion } = req.body;
     db.query(
-      "INSERT INTO Tareas (titulo, descripcion, docente_id) VALUES (?, ?, ?)",
+      "INSERT INTO tareas (titulo, descripcion, docente_id) VALUES (?, ?, ?)",
       [titulo, descripcion, req.usuario.id],
       (err, result) => {
         if (err) return res.status(500).json({ mensaje: "Error al guardar." });
@@ -153,7 +153,7 @@ app.put(
     const { titulo, descripcion } = req.body;
     const { id } = req.params;
 
-    const sql = "UPDATE Tareas SET titulo = ?, descripcion = ? WHERE id = ?";
+    const sql = "UPDATE tareas SET titulo = ?, descripcion = ? WHERE id = ?";
 
     db.query(sql, [titulo, descripcion, id], (err, result) => {
       if (err)
@@ -196,7 +196,7 @@ app.post(
 
     // 1. Guardar la entrega
     const sqlEntrega =
-      'INSERT INTO Entregas (tarea_id, estudiante_id, url_archivo, estado) VALUES (?, ?, ?, "Entregado")';
+      'INSERT INTO entregas (tarea_id, estudiante_id, url_archivo, estado) VALUES (?, ?, ?, "Entregado")';
 
     db.query(sqlEntrega, [id, estudianteId, estado], (err, result) => {
       if (err) {
@@ -210,7 +210,7 @@ app.post(
         [estudianteId],
         (errU, resU) => {
           db.query(
-            "SELECT titulo FROM Tareas WHERE id = ?",
+            "SELECT titulo FROM tareas WHERE id = ?",
             [id],
             (errT, resT) => {
               const nombre =
@@ -248,7 +248,7 @@ app.get(
   (req, res) => {
     // Asegúrate de que esta consulta sea SELECT *
     const sql =
-      "SELECT * FROM Entregas WHERE tarea_id = ? AND estudiante_id = ?";
+      "SELECT * FROM entregas WHERE tarea_id = ? AND estudiante_id = ?";
 
     db.query(sql, [req.params.id, req.usuario.id], (err, results) => {
       if (err)
@@ -270,7 +270,7 @@ app.delete(
     const estudiante_id = req.usuario.id;
 
     // 1. Primero eliminamos la entrega
-    const sql = "DELETE FROM Entregas WHERE tarea_id = ? AND estudiante_id = ?";
+    const sql = "DELETE FROM entregas WHERE tarea_id = ? AND estudiante_id = ?";
     db.query(sql, [id_tarea, estudiante_id], (err, result) => {
       if (err) return res.status(500).json({ mensaje: "Error al eliminar." });
 
@@ -281,7 +281,7 @@ app.delete(
         [estudiante_id],
         (errU, resU) => {
           db.query(
-            "SELECT titulo FROM Tareas WHERE id = ?",
+            "SELECT titulo FROM tareas WHERE id = ?",
             [id_tarea],
             (errT, resT) => {
               const nombre =
@@ -318,7 +318,7 @@ app.get(
   verificarRol(["Docente"]),
   (req, res) => {
     const sql = `SELECT e.id, u.nombre AS nombre_estudiante, e.url_archivo AS estado, e.calificacion 
-                 FROM Entregas e JOIN Usuarios u ON e.estudiante_id = u.id WHERE e.tarea_id = ?`;
+                 FROM entregas e JOIN usuarios u ON e.estudiante_id = u.id WHERE e.tarea_id = ?`;
     db.query(sql, [req.params.id], (err, results) => {
       if (err) return res.status(500).json({ mensaje: "Error" });
       res.json(results);
@@ -342,7 +342,7 @@ app.put(
 
     // 1. Actualizamos la calificación
     const sql =
-      "UPDATE Entregas SET calificacion = ?, estado = 'Calificado' WHERE id = ?";
+      "UPDATE entregas SET calificacion = ?, estado = 'Calificado' WHERE id = ?";
 
     db.query(sql, [calificacion, entregaId], (err, result) => {
       if (err) return res.status(500).json({ mensaje: "Error al calificar" });
@@ -358,8 +358,8 @@ app.put(
           // Consultamos la info de la entrega: título tarea y nombre estudiante
           const sqlInfo = `
             SELECT t.titulo, u.nombre AS nombre_estudiante 
-            FROM Entregas e 
-            JOIN Tareas t ON e.tarea_id = t.id 
+            FROM entregas e 
+            JOIN tareas t ON e.tarea_id = t.id 
             JOIN usuarios u ON e.estudiante_id = u.id 
             WHERE e.id = ?`;
 
@@ -399,7 +399,7 @@ app.delete(
 
     // 1. Buscamos el título de la tarea Y el nombre del usuario antes de borrar
     db.query(
-      "SELECT titulo FROM Tareas WHERE id = ?",
+      "SELECT titulo FROM tareas WHERE id = ?",
       [id_tarea],
       (errT, resT) => {
         db.query(
@@ -414,7 +414,7 @@ app.delete(
 
             // 2. Ahora sí borramos la tarea
             db.query(
-              "DELETE FROM Tareas WHERE id = ?",
+              "DELETE FROM tareas WHERE id = ?",
               [id_tarea],
               (err, result) => {
                 if (err)
