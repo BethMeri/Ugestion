@@ -51,24 +51,38 @@ app.post("/api/registro", async (req, res) => {
 
 app.post("/api/login", (req, res) => {
   const { correo, password } = req.body;
+  
   db.query(
     "SELECT * FROM Usuarios WHERE correo = ?",
     [correo],
     async (err, results) => {
-      if (err || results.length === 0)
+      // 1. Atrapamos cualquier error interno de la base de datos (¡Este es el que necesitamos ver!)
+      if (err) {
+        console.error("🚨 ERROR REAL DE SQL:", err);
+        return res.status(500).json({ 
+          mensaje: "Error interno de SQL", 
+          detalle: err.message 
+        });
+      }
+      
+      // 2. Si no hay error en BD, pero el correo no existe en la tabla
+      if (results.length === 0) {
         return res.status(401).json({ mensaje: "Credenciales incorrectas" });
+      }
+
+      // 3. Validamos la contraseña encriptada
       const usuario = results[0];
       if (await bcrypt.compare(password, usuario.password_hash)) {
         const token = jwt.sign(
           { id: usuario.id, rol: usuario.rol },
           "LLAVE_SECRETA_UGESTION_123",
-          { expiresIn: "4h" },
+          { expiresIn: "4h" }
         );
-        res.status(200).json({ token, rol: usuario.rol });
+        return res.status(200).json({ token, rol: usuario.rol });
       } else {
-        res.status(401).json({ mensaje: "Credenciales incorrectas" });
+        return res.status(401).json({ mensaje: "Credenciales incorrectas" });
       }
-    },
+    }
   );
 });
 
